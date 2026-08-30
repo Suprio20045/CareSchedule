@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import { supabase } from '../utils/supabaseClient';
+import {
+  saveVaccinations,
+  updateVaccination,
+  deleteVaccinationsForPatient
+} from '../utils/vaccinationApi';
 import { 
   Patient, 
   AppSettings, 
@@ -10,7 +15,6 @@ import {
 } from '../types';
 import { DEFAULT_SETTINGS } from '../data/demoData';
 import { 
-  loadPatientsFromStorage, 
   savePatientsToStorage, 
   loadSettingsFromStorage, 
   saveSettingsToStorage, 
@@ -42,8 +46,8 @@ interface AppContextType {
   
   // Actions
   addPatient: (patientData: Omit<Patient, 'id' | 'createdAt' | 'vaccines'>) => Promise<void>;
-  updatePatient: (patient: Patient) => void;
-  deletePatient: (patientId: string) => void;
+  updatePatient: (patient: Patient) => Promise<void>;
+  deletePatient: (patientId: string) => Promise<void>;
   markVaccineCompleted: (
     patientId: string, 
     vaccineRecordId: string, 
@@ -51,11 +55,11 @@ interface AppContextType {
     notes?: string, 
     batchNumber?: string, 
     administeredBy?: string
-  ) => void;
-  undoVaccineCompleted: (patientId: string, vaccineRecordId: string) => void;
+  ) => Promise<void>;
+  undoVaccineCompleted: (patientId: string, vaccineRecordId: string) => Promise<void>;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
-  resetToDemo: () => void;
-  clearAll: () => void;
+  resetToDemo: () => Promise<void>;
+  clearAll: () => Promise<void>;
   
   // Computed stats
   aggregated: {
@@ -70,30 +74,46 @@ interface AppContextType {
   navigateToPatientSchedule: (patientId: string) => void;
   navigateToPatientReport: (patientId: string) => void;
 }
-
-const AppContext = createContext<AppContextType | undefined>(undefined);
-
-// Map Supabase patient row to Patient interface
-const mapSupabasePatient = (row: any): Patient => {
+// Convert a Supabase patient row into our React Patient format
+const mapPatientFromDb = (patient: any, vaccines: PatientVaccineRecord[]): Patient => {
   return {
-    id: row.id,
-    fullName: row.full_name,
-    dateOfBirth: row.date_of_birth,
-    gender: row.gender || 'Other',
-    bloodGroup: row.blood_group,
-    guardianName: row.guardian_name,
-    guardianPhone: row.guardian_phone,
-    guardianRelation: row.guardian_relation,
-    address: row.address,
-    avatarSeed: row.avatar_seed,
-    notes: row.notes,
-    createdAt: row.created_at,
-    vaccines: [] // To be loaded separately or populated from related table
+    id: patient.id,
+    fullName: patient.full_name,
+    dateOfBirth: patient.date_of_birth,
+    gender: patient.gender,
+    bloodGroup: patient.blood_group,
+    guardianName: patient.guardian_name,
+    guardianPhone: patient.guardian_phone,
+    guardianRelation: patient.guardian_relation,
+    address: patient.address,
+    avatarSeed: patient.avatar_seed,
+    notes: patient.notes,
+    createdAt: patient.created_at,
+    vaccines,
   };
 };
 
+// Convert a Supabase vaccination row into our React format
+const mapVaccinationFromDb = (vaccine: any): PatientVaccineRecord => {
+  return {
+    id: vaccine.id,
+    vaccineId: vaccine.vaccine_id,
+    vaccineName: vaccine.vaccine_name,
+    doseNumber: vaccine.dose_number,
+    dueDate: vaccine.due_date,
+    dateAdministered: vaccine.date_administered,
+    status: vaccine.status,
+    administeredBy: vaccine.administered_by,
+    notes: vaccine.notes,
+    batchNumber: vaccine.batch_number,
+    location: vaccine.location,
+  };
+};
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<AppSettings>(() => loadSettingsFromStorage());
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -109,21 +129,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    const { data, error } = await supabase
+    // Load patients belonging to the logged-in user
+    const { data: patientData, error: patientError } = await supabase
       .from('patients')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error loading patients:', error);
+    if (patientError) {
+      console.error('Error loading patients:', patientError);
       return;
     }
 
-    if (data) {
-      const mappedPatients = data.map(mapSupabasePatient);
-      setPatients(mappedPatients);
+    if (!patientData || patientData.length === 0) {
+      setPatients([]);
+      return;
     }
+
+    // Get patient IDs
+    const patientIds = patientData.map((patient) => patient.id);
+
+    // Load vaccination records for those patients
+    const { data: vaccinationData, error: vaccinationError } = await supabase
+      .from('vaccinations')
+      .select('*')
+      .in('patient_id', patientIds)
+      .order('due_date', { ascending: true });
+
+    if (vaccinationError) {
+      console.error('Error loading vaccinations:', vaccinationError);
+      return;
+    }
+
+    // Group vaccinations by patient
+    const vaccinationsByPatient: Record<string, PatientVaccineRecord[]> = {};
+
+    (vaccinationData || []).forEach((vaccine) => {
+      if (!vaccinationsByPatient[vaccine.patient_id]) {
+        vaccinationsByPatient[vaccine.patient_id] = [];
+      }
+
+      vaccinationsByPatient[vaccine.patient_id].push(
+        mapVaccinationFromDb(vaccine)
+      );
+    });
+
+    // Convert Supabase patients into our React format
+    const formattedPatients: Patient[] = patientData.map((patient) => {
+      return mapPatientFromDb(
+        patient,
+        vaccinationsByPatient[patient.id] || []
+      );
+    });
+
+    setPatients(formattedPatients);
   };
 
   loadPatients();
@@ -140,10 +199,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [settings.theme]);
 
-  // Sync patients to storage whenever changed
+  // Supabase is the source of truth for patient/vaccination data now, so this
+  // only needs to update in-memory state — no localStorage mirroring.
   const updateAndPersistPatients = useCallback((newPatients: Patient[]) => {
     setPatients(newPatients);
-    savePatientsToStorage(newPatients);
   }, []);
 
   const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
@@ -226,6 +285,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // Convert Supabase data back into our React Patient format
         const schedule = generateVaccineSchedule(patientData.dateOfBirth, settings.dueSoonThresholdDays);
+        // Save generated vaccine schedule to Supabase
+        const { error: vaccineError } = await saveVaccinations(
+          data.id,
+          schedule
+        );
+
         const newPatient: Patient = {
           ...patientData,
           id: data.id,
@@ -239,11 +304,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...currentPatients,
         ]);
 
-        addToast({
-          type: 'success',
-          title: 'Patient Added',
-          message: `${newPatient.fullName} added successfully.`
-        });
+        if (vaccineError) {
+          console.error('Error saving vaccinations:', vaccineError);
+
+          // Patient was created, but vaccines failed - warn only, don't also claim success
+          addToast({
+            type: 'warning',
+            title: 'Patient Added',
+            message: 'Patient was saved, but the vaccination schedule could not be saved.'
+          });
+        } else {
+          addToast({
+            type: 'success',
+            title: 'Patient Added',
+            message: `${newPatient.fullName} added successfully.`
+          });
+        }
 
       } catch (error) {
         console.error('Error adding patient:', error);
@@ -258,45 +334,149 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   // Update Patient Details
-  const updatePatient = useCallback((updated: Patient) => {
-    const nextList = patients.map(p => {
-      if (p.id === updated.id) {
-        // If DOB changed, regenerate schedule preserving any previously completed vaccines
-        if (p.dateOfBirth !== updated.dateOfBirth) {
-          const freshSchedule = generateVaccineSchedule(updated.dateOfBirth, settings.dueSoonThresholdDays);
-          // transfer completed statuses if matched
-          const mergedVaccines = freshSchedule.map(fresh => {
-            const old = p.vaccines.find(v => v.vaccineId === fresh.vaccineId);
-            if (old && old.dateAdministered) {
-              return {
-                ...fresh,
-                dateAdministered: old.dateAdministered,
-                administeredBy: old.administeredBy,
-                batchNumber: old.batchNumber,
-                status: 'Completed' as const
-              };
-            }
-            return fresh;
-          });
-          return { ...updated, vaccines: mergedVaccines };
-        }
-        return updated;
-      }
-      return p;
-    });
+  const updatePatient = useCallback(async (updated: Patient) => {
+    const existing = patients.find(p => p.id === updated.id);
 
+    if (!existing) {
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Patient record could not be found.'
+      });
+      return;
+    }
+
+    const dobChanged = existing.dateOfBirth !== updated.dateOfBirth;
+
+    // Persist patient profile fields to Supabase first
+    const { error: patientError } = await supabase
+      .from('patients')
+      .update({
+        full_name: updated.fullName,
+        date_of_birth: updated.dateOfBirth,
+        gender: updated.gender,
+        blood_group: updated.bloodGroup,
+        guardian_name: updated.guardianName,
+        guardian_phone: updated.guardianPhone,
+        guardian_relation: updated.guardianRelation,
+        address: updated.address,
+        avatar_seed: updated.avatarSeed,
+        notes: updated.notes,
+      })
+      .eq('id', updated.id);
+
+    if (patientError) {
+      console.error('Error updating patient:', patientError);
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to save patient details.'
+      });
+      return;
+    }
+
+    let finalVaccines = existing.vaccines;
+    let scheduleRefreshFailed = false;
+
+    if (dobChanged) {
+      // DOB changed: regenerate schedule preserving any previously completed vaccines
+      const freshSchedule = generateVaccineSchedule(updated.dateOfBirth, settings.dueSoonThresholdDays);
+      const mergedVaccines = freshSchedule.map(fresh => {
+        const old = existing.vaccines.find(
+          v =>
+            v.vaccineId === fresh.vaccineId &&
+            v.doseNumber === fresh.doseNumber
+        );
+        if (old && old.dateAdministered) {
+          return {
+            ...fresh,
+            dateAdministered: old.dateAdministered,
+            administeredBy: old.administeredBy,
+            batchNumber: old.batchNumber,
+            notes: old.notes,
+            location: old.location,
+            status: 'Completed' as const
+          };
+        }
+        return fresh;
+      });
+
+      // Replace vaccination rows in Supabase to match the regenerated schedule.
+      // These two calls aren't wrapped in a real database transaction, so if the
+      // insert after the delete fails, we make a best-effort attempt to restore
+      // the old rows rather than silently leaving the patient with a new DOB
+      // and no vaccination schedule at all.
+      const { error: deleteError } = await deleteVaccinationsForPatient(updated.id);
+
+      if (deleteError) {
+        console.error('Error clearing old vaccinations:', deleteError);
+        scheduleRefreshFailed = true;
+        // Delete failed, so the old rows are still intact in Supabase.
+        finalVaccines = existing.vaccines;
+      } else {
+        const { error: vaccineError } = await saveVaccinations(updated.id, mergedVaccines);
+
+        if (vaccineError) {
+          console.error('Error saving regenerated vaccinations:', vaccineError);
+          scheduleRefreshFailed = true;
+
+          // Best-effort rollback: the old rows are already gone, so try to
+          // restore them so the database isn't left with an empty schedule.
+          const { error: restoreError } = await saveVaccinations(updated.id, existing.vaccines);
+
+          if (restoreError) {
+            console.error('Error restoring previous vaccinations after failed refresh:', restoreError);
+            // Restore also failed - Supabase now has no vaccination rows for
+            // this patient, so reflect that reality in the UI rather than
+            // showing vaccines that no longer exist in the database.
+            finalVaccines = [];
+          } else {
+            finalVaccines = existing.vaccines;
+          }
+        } else {
+          finalVaccines = mergedVaccines;
+        }
+      }
+    }
+
+    const nextList = patients.map(p => (p.id === updated.id ? { ...updated, vaccines: finalVaccines } : p));
     updateAndPersistPatients(nextList);
-    addToast({
-      type: 'success',
-      title: 'Patient Updated',
-      message: `Profile details for ${updated.fullName} have been saved.`
-    });
+
+    if (scheduleRefreshFailed) {
+      addToast({
+        type: 'warning',
+        title: 'Patient Updated',
+        message: 'Profile saved, but the vaccination schedule could not be refreshed.'
+      });
+    } else {
+      addToast({
+        type: 'success',
+        title: 'Patient Updated',
+        message: `Profile details for ${updated.fullName} have been saved.`
+      });
+    }
   }, [patients, settings.dueSoonThresholdDays, updateAndPersistPatients, addToast]);
 
   // Delete Patient
-  const deletePatient = useCallback((patientId: string) => {
+  const deletePatient = useCallback(async (patientId: string) => {
     const target = patients.find(p => p.id === patientId);
     const targetName = target ? target.fullName : 'Patient';
+    const { error } = await supabase
+  .from('patients')
+  .delete()
+  .eq('id', patientId);
+
+if (error) {
+  console.error('Error deleting patient:', error);
+
+  addToast({
+    type: 'error',
+    title: 'Error',
+    message: 'Failed to delete patient.'
+  });
+
+  return;
+}
     const nextList = patients.filter(p => p.id !== patientId);
     updateAndPersistPatients(nextList);
 
@@ -312,42 +492,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [patients, selectedPatientId, updateAndPersistPatients, addToast]);
 
   // Mark Vaccine Completed
-  const markVaccineCompleted = useCallback((
-    patientId: string, 
-    vaccineRecordId: string, 
-    administeredDate: string, 
-    notes?: string, 
-    batchNumber?: string, 
+  const markVaccineCompleted = useCallback(async (
+    patientId: string,
+    vaccineRecordId: string,
+    administeredDate: string,
+    notes?: string,
+    batchNumber?: string,
     administeredBy?: string
   ) => {
     let vaccineName = 'Vaccine';
     let patientName = '';
+    let finalAdministeredBy = administeredBy || settings.userName;
 
     const nextList = patients.map(p => {
       if (p.id === patientId) {
         patientName = p.fullName;
+
         const updatedVaccines = p.vaccines.map(v => {
           if (v.id === vaccineRecordId) {
             vaccineName = v.vaccineName;
+
             return {
               ...v,
               dateAdministered: administeredDate,
               status: 'Completed' as const,
               notes: notes !== undefined ? notes : v.notes,
-              batchNumber: batchNumber !== undefined ? batchNumber : v.batchNumber,
-              administeredBy: administeredBy !== undefined ? administeredBy : (v.administeredBy || settings.userName)
+              batchNumber: batchNumber !== undefined
+                ? batchNumber
+                : v.batchNumber,
+              administeredBy:
+                administeredBy !== undefined
+                  ? administeredBy
+                  : (v.administeredBy || settings.userName)
             };
           }
+
           return v;
         });
-        return { ...p, vaccines: updatedVaccines };
+
+        return {
+          ...p,
+          vaccines: updatedVaccines
+        };
       }
+
       return p;
     });
 
+    const updatedPatient = nextList.find(p => p.id === patientId);
+    const updatedVaccine = updatedPatient?.vaccines.find(
+      v => v.id === vaccineRecordId
+    );
+
+    if (!updatedVaccine) {
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Vaccination record could not be found.'
+      });
+      return;
+    }
+
+    // Save vaccination update to Supabase
+    const { error } = await updateVaccination(
+      vaccineRecordId,
+      {
+        dateAdministered: administeredDate,
+        status: 'Completed',
+        notes: updatedVaccine.notes || null,
+        batchNumber: updatedVaccine.batchNumber || null,
+        administeredBy: finalAdministeredBy || null,
+        location: updatedVaccine.location || null
+      }
+    );
+
+    if (error) {
+      console.error('Error updating vaccination:', error);
+
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to save vaccination status.'
+      });
+
+      return;
+    }
+
+    // Update UI only after Supabase succeeds
     updateAndPersistPatients(nextList);
 
-    // Trigger subtle celebratory confetti
     try {
       confetti({
         particleCount: 40,
@@ -364,29 +597,94 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: 'Vaccination Completed',
       message: `${vaccineName} recorded as completed for ${patientName}.`
     });
-  }, [patients, settings.userName, updateAndPersistPatients, addToast]);
+
+  }, [
+    patients,
+    settings.userName,
+    updateAndPersistPatients,
+    addToast
+  ]);
 
   // Undo Vaccine Completed
-  const undoVaccineCompleted = useCallback((patientId: string, vaccineRecordId: string) => {
+  const undoVaccineCompleted = useCallback(async (
+    patientId: string,
+    vaccineRecordId: string
+  ) => {
     const today = getTodayDateString();
+
     let vaccineName = 'Vaccine';
+
+    const targetPatient = patients.find(
+      p => p.id === patientId
+    );
+
+    const targetVaccine = targetPatient?.vaccines.find(
+      v => v.id === vaccineRecordId
+    );
+
+    if (!targetVaccine) {
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Vaccination record could not be found.'
+      });
+      return;
+    }
+
+    vaccineName = targetVaccine.vaccineName;
+
+    const newStatus = determineVaccineStatus(
+      targetVaccine.dueDate,
+      null,
+      settings.dueSoonThresholdDays,
+      today
+    );
+
+    // Update Supabase first
+    const { error } = await updateVaccination(
+      vaccineRecordId,
+      {
+        dateAdministered: null,
+        status: newStatus,
+        notes: targetVaccine.notes || null,
+        batchNumber: targetVaccine.batchNumber || null,
+        administeredBy: targetVaccine.administeredBy || null,
+        location: targetVaccine.location || null
+      }
+    );
+
+    if (error) {
+      console.error('Error resetting vaccination:', error);
+
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to reset vaccination status.'
+      });
+
+      return;
+    }
 
     const nextList = patients.map(p => {
       if (p.id === patientId) {
         const updatedVaccines = p.vaccines.map(v => {
           if (v.id === vaccineRecordId) {
-            vaccineName = v.vaccineName;
-            const newStatus = determineVaccineStatus(v.dueDate, null, settings.dueSoonThresholdDays, today);
             return {
               ...v,
               dateAdministered: null,
               status: newStatus
             };
           }
+
           return v;
         });
-        return { ...p, vaccines: updatedVaccines };
+
+        return {
+          ...p,
+          vaccines: updatedVaccines
+        };
       }
+
       return p;
     });
 
@@ -397,7 +695,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: 'Status Reset',
       message: `${vaccineName} status was reverted to pending.`
     });
-  }, [patients, settings.dueSoonThresholdDays, updateAndPersistPatients, addToast]);
+
+  }, [
+    patients,
+    settings.dueSoonThresholdDays,
+    updateAndPersistPatients,
+    addToast
+  ]);
 
   // Update Settings
   const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
@@ -425,30 +729,165 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [addToast]);
 
+  // Deletes every patient (and their vaccinations) belonging to the current
+  // user from Supabase. Shared by resetToDemo and clearAll so that "clearing"
+  // the app also clears the real backend, not just local/React state.
+  const deleteAllPatientsForCurrentUser = useCallback(async (): Promise<{ error: string | null }> => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      // Nothing to delete server-side if there's no logged-in user.
+      return { error: null };
+    }
+
+    const { data: userPatients, error: fetchError } = await supabase
+      .from('patients')
+      .select('id')
+      .eq('user_id', user.id);
+
+    if (fetchError) {
+      console.error('Error fetching patients before clearing:', fetchError);
+      return { error: 'Failed to load existing patients.' };
+    }
+
+    const patientIds = (userPatients || []).map(p => p.id);
+
+    if (patientIds.length === 0) {
+      return { error: null };
+    }
+
+    const { error: vaccinationDeleteError } = await supabase
+      .from('vaccinations')
+      .delete()
+      .in('patient_id', patientIds);
+
+    if (vaccinationDeleteError) {
+      console.error('Error clearing vaccinations:', vaccinationDeleteError);
+      return { error: 'Failed to clear vaccination records.' };
+    }
+
+    const { error: patientDeleteError } = await supabase
+      .from('patients')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (patientDeleteError) {
+      console.error('Error clearing patients:', patientDeleteError);
+      return { error: 'Failed to clear patients.' };
+    }
+
+    return { error: null };
+  }, []);
+
   // Reset to Demo Data
-  const resetToDemo = useCallback(() => {
+  const resetToDemo = useCallback(async () => {
+    const { error } = await deleteAllPatientsForCurrentUser();
+
+    if (error) {
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: `Could not reset demo data: ${error}`
+      });
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const demo = resetApplicationStorage();
-    setPatients(demo);
+
+    if (!user) {
+      // No logged-in user to own the demo patients in Supabase - fall back
+      // to local-only demo data rather than failing outright.
+      setPatients(demo);
+      setSettings(DEFAULT_SETTINGS);
+      setSelectedPatientId(demo[0]?.id || null);
+      addToast({
+        type: 'success',
+        title: 'Demo Data Restored',
+        message: 'Loaded sample patients, immunization records, and default settings.'
+      });
+      return;
+    }
+
+    // Re-create the demo patients (and their vaccine schedules) in Supabase
+    // so the backend and the UI agree on what demo data exists.
+    const createdPatients: Patient[] = [];
+
+    for (const demoPatient of demo) {
+      const { data: insertedPatient, error: insertError } = await supabase
+        .from('patients')
+        .insert({
+          user_id: user.id,
+          full_name: demoPatient.fullName,
+          date_of_birth: demoPatient.dateOfBirth,
+          gender: demoPatient.gender,
+          blood_group: demoPatient.bloodGroup,
+          guardian_name: demoPatient.guardianName,
+          guardian_phone: demoPatient.guardianPhone,
+          guardian_relation: demoPatient.guardianRelation,
+          address: demoPatient.address,
+          avatar_seed: demoPatient.avatarSeed,
+          notes: demoPatient.notes,
+        })
+        .select()
+        .single();
+
+      if (insertError || !insertedPatient) {
+        console.error('Error inserting demo patient:', insertError);
+        continue;
+      }
+
+      const { error: vaccineError } = await saveVaccinations(insertedPatient.id, demoPatient.vaccines);
+
+      if (vaccineError) {
+        console.error('Error saving demo vaccinations:', vaccineError);
+      }
+
+      createdPatients.push({
+        ...demoPatient,
+        id: insertedPatient.id,
+        createdAt: insertedPatient.created_at,
+      });
+    }
+
+    setPatients(createdPatients);
     setSettings(DEFAULT_SETTINGS);
-    setSelectedPatientId(demo[0]?.id || null);
+    setSelectedPatientId(createdPatients[0]?.id || null);
+
     addToast({
       type: 'success',
       title: 'Demo Data Restored',
       message: 'Loaded sample patients, immunization records, and default settings.'
     });
-  }, [addToast]);
+  }, [addToast, deleteAllPatientsForCurrentUser]);
 
   // Clear All Data
-  const clearAll = useCallback(() => {
+  const clearAll = useCallback(async () => {
+    const { error } = await deleteAllPatientsForCurrentUser();
+
+    if (error) {
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: `Could not clear all data: ${error}`
+      });
+      return;
+    }
+
     clearApplicationStorage();
     setPatients([]);
     setSelectedPatientId(null);
     addToast({
       type: 'warning',
       title: 'All Data Cleared',
-      message: 'All local patients and records have been deleted.'
+      message: 'All patients and vaccination records have been deleted.'
     });
-  }, [addToast]);
+  }, [addToast, deleteAllPatientsForCurrentUser]);
 
   const navigateToPatientSchedule = useCallback((patientId: string) => {
     setSelectedPatientId(patientId);
