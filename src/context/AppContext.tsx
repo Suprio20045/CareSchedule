@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import confetti from 'canvas-confetti';
+import { supabase } from '../utils/supabaseClient';
 import { 
   Patient, 
   AppSettings, 
@@ -40,7 +41,7 @@ interface AppContextType {
   removeToast: (id: string) => void;
   
   // Actions
-  addPatient: (data: Omit<Patient, 'id' | 'createdAt' | 'vaccines'>) => Patient;
+  addPatient: (patientData: Omit<Patient, 'id' | 'createdAt' | 'vaccines'>) => Promise<void>;
   updatePatient: (patient: Patient) => void;
   deletePatient: (patientId: string) => void;
   markVaccineCompleted: (
@@ -72,13 +73,61 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// Map Supabase patient row to Patient interface
+const mapSupabasePatient = (row: any): Patient => {
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    dateOfBirth: row.date_of_birth,
+    gender: row.gender || 'Other',
+    bloodGroup: row.blood_group,
+    guardianName: row.guardian_name,
+    guardianPhone: row.guardian_phone,
+    guardianRelation: row.guardian_relation,
+    address: row.address,
+    avatarSeed: row.avatar_seed,
+    notes: row.notes,
+    createdAt: row.created_at,
+    vaccines: [] // To be loaded separately or populated from related table
+  };
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [patients, setPatients] = useState<Patient[]>(() => loadPatientsFromStorage());
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [settings, setSettings] = useState<AppSettings>(() => loadSettingsFromStorage());
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  useEffect(() => {
+  const loadPatients = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('patients')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading patients:', error);
+      return;
+    }
+
+    if (data) {
+      const mappedPatients = data.map(mapSupabasePatient);
+      setPatients(mappedPatients);
+    }
+  };
+
+  loadPatients();
+}, []);
 
   // Apply dark mode class to html document element if theme is dark
   useEffect(() => {
@@ -129,30 +178,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [patients, selectedPatientId]);
 
   // Add Patient
-  const addPatient = useCallback((data: Omit<Patient, 'id' | 'createdAt' | 'vaccines'>): Patient => {
-    const today = getTodayDateString();
-    const id = `pat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const schedule = generateVaccineSchedule(data.dateOfBirth, settings.dueSoonThresholdDays);
+  const addPatient = useCallback(
+    async (patientData: Omit<Patient, 'id' | 'createdAt' | 'vaccines'>) => {
+      try {
+        // Get currently logged-in user
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-    const newPatient: Patient = {
-      ...data,
-      id,
-      createdAt: today,
-      vaccines: schedule
-    };
+        if (!user) {
+          addToast({
+            type: 'error',
+            title: 'Authentication Required',
+            message: 'You must be logged in to add a patient.'
+          });
+          return;
+        }
 
-    const nextList = [newPatient, ...patients];
-    updateAndPersistPatients(nextList);
-    setSelectedPatientId(id);
+        // Insert patient into Supabase
+        const { data, error } = await supabase
+          .from('patients')
+          .insert({
+            user_id: user.id,
+            full_name: patientData.fullName,
+            date_of_birth: patientData.dateOfBirth,
+            gender: patientData.gender,
+            blood_group: patientData.bloodGroup,
+            guardian_name: patientData.guardianName,
+            guardian_phone: patientData.guardianPhone,
+            guardian_relation: patientData.guardianRelation,
+            address: patientData.address,
+            avatar_seed: patientData.avatarSeed,
+            notes: patientData.notes,
+          })
+          .select()
+          .single();
 
-    addToast({
-      type: 'success',
-      title: 'Patient Added',
-      message: `${newPatient.fullName} registered with full vaccination schedule.`
-    });
+        if (error) {
+          console.error('Supabase error:', error);
+          addToast({
+            type: 'error',
+            title: 'Error',
+            message: 'Failed to save patient.'
+          });
+          return;
+        }
 
-    return newPatient;
-  }, [patients, settings.dueSoonThresholdDays, updateAndPersistPatients, addToast]);
+        // Convert Supabase data back into our React Patient format
+        const schedule = generateVaccineSchedule(patientData.dateOfBirth, settings.dueSoonThresholdDays);
+        const newPatient: Patient = {
+          ...patientData,
+          id: data.id,
+          createdAt: data.created_at,
+          vaccines: schedule
+        };
+
+        // Update UI immediately
+        setPatients((currentPatients) => [
+          newPatient,
+          ...currentPatients,
+        ]);
+
+        addToast({
+          type: 'success',
+          title: 'Patient Added',
+          message: `${newPatient.fullName} added successfully.`
+        });
+
+      } catch (error) {
+        console.error('Error adding patient:', error);
+        addToast({
+          type: 'error',
+          title: 'Error',
+          message: 'Something went wrong while adding the patient.'
+        });
+      }
+    },
+    [addToast, settings.dueSoonThresholdDays]
+  );
 
   // Update Patient Details
   const updatePatient = useCallback((updated: Patient) => {

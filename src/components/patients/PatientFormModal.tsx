@@ -7,7 +7,7 @@ import { User, Calendar, Droplet, Phone, Home, FileText } from 'lucide-react';
 interface PatientFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Omit<Patient, 'id' | 'createdAt' | 'vaccines'>) => void;
+  onSubmit: (data: Omit<Patient, 'id' | 'createdAt' | 'vaccines'>) => Promise<void>;
   initialData?: Patient | null;
   mode: 'add' | 'edit';
 }
@@ -76,11 +76,11 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    onSubmit({
+    await onSubmit({
       fullName: fullName.trim(),
       dateOfBirth,
       gender,
