@@ -11,7 +11,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
     "canvas-confetti": "^1.9.4",
+<<<<<<< HEAD
     "firebase": "^12.18.0",
+=======
+>>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
     "lucide-react": "^0.546.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

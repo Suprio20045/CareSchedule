@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+<<<<<<< HEAD
 :root {
   color-scheme: light;
   --premium-shadow: 0 30px 80px -40px rgba(15, 23, 42, 0.42);
@@ -28,6 +29,11 @@
   select,
   textarea {
     font: inherit;
+=======
+@layer base {
+  body {
+    @apply antialiased font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100;
+>>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
   }
 }
 
@@ -52,11 +58,15 @@
   }
 }
 
+<<<<<<< HEAD
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
 }
 
+=======
+/* Custom subtle scrollbar */
+>>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -74,7 +84,10 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.6);
 }
+<<<<<<< HEAD
 
 .badge {
   @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
 }
+=======
+>>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f

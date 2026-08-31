@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ConfirmDialog } from '../common/ConfirmDialog';
@@ -5,6 +6,12 @@ import { exportBackupJSON, importBackupJSON } from '../../utils/storage';
 import { signOut } from '../../utils/auth';
 import { auth } from '../../utils/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+=======
+import React, { useState } from 'react';
+import { useApp } from '../../context/AppContext';
+import { ConfirmDialog } from '../common/ConfirmDialog';
+import { exportBackupJSON, importBackupJSON } from '../../utils/storage';
+>>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 import { 
   Settings as SettingsIcon, 
   Sun, 
@@ -22,8 +29,12 @@ import {
   Info, 
   Check,
   Building,
+<<<<<<< HEAD
   User,
   LogOut
+=======
+  User
+>>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -31,6 +42,7 @@ export const SettingsView: React.FC = () => {
 
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+<<<<<<< HEAD
   const [confirmSignOutOpen, setConfirmSignOutOpen] = useState(false);
   const [userName, setUserName] = useState(settings.userName);
   const [clinicName, setClinicName] = useState(settings.clinicName);
@@ -63,6 +75,11 @@ export const SettingsView: React.FC = () => {
       });
     }
   };
+=======
+  const [userName, setUserName] = useState(settings.userName);
+  const [clinicName, setClinicName] = useState(settings.clinicName);
+  const [role, setRole] = useState(settings.role);
+>>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,6 +207,7 @@ export const SettingsView: React.FC = () => {
         </form>
       </div>
 
+<<<<<<< HEAD
       {/* Account Card */}
       <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-6 border border-slate-100 dark:border-slate-700/60 shadow-xs space-y-4">
         <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-700/60">
@@ -217,6 +235,8 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
+=======
+>>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
       {/* Appearance & Schedule Parameters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Appearance Mode */}
@@ -382,6 +402,7 @@ export const SettingsView: React.FC = () => {
         confirmText="Clear All Data"
         variant="danger"
       />
+<<<<<<< HEAD
 
       <ConfirmDialog
         isOpen={confirmSignOutOpen}
@@ -392,6 +413,8 @@ export const SettingsView: React.FC = () => {
         confirmText="Sign Out"
         variant="danger"
       />
+=======
+>>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
     </div>
   );
 };

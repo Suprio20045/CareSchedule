@@ -450,11 +450,19 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
           setIsAddModalOpen(false);
           setEditingPatient(null);
         }}
+<<<<<<< HEAD
         onSubmit={async (data) => {
           if (editingPatient) {
             await updatePatient({ ...editingPatient, ...data });
           } else {
             await addPatient(data);
+=======
+        onSubmit={(data) => {
+          if (editingPatient) {
+            updatePatient({ ...editingPatient, ...data });
+          } else {
+            addPatient(data);
+>>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
           }
         }}
         initialData={editingPatient}
