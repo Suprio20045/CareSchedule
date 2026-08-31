@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --premium-shadow: 0 30px 80px -40px rgba(15, 23, 42, 0.42);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    height: 100%;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+    font-family: Inter, "Segoe UI", sans-serif;
+    background-image: radial-gradient(circle at top left, rgba(168, 85, 247, 0.08), transparent 20%), radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.08), transparent 25%);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+/* Print specific stylesheet for official report printouts */
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+
+  aside, header, nav, .print\:hidden {
+    display: none !important;
+  }
+
+  #printable-report {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+}
