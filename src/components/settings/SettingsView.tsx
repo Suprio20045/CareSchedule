@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ConfirmDialog } from '../common/ConfirmDialog';
@@ -6,12 +5,6 @@ import { exportBackupJSON, importBackupJSON } from '../../utils/storage';
 import { signOut } from '../../utils/auth';
 import { auth } from '../../utils/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-=======
-import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
-import { ConfirmDialog } from '../common/ConfirmDialog';
-import { exportBackupJSON, importBackupJSON } from '../../utils/storage';
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 import { 
   Settings as SettingsIcon, 
   Sun, 
@@ -29,12 +22,8 @@ import {
   Info, 
   Check,
   Building,
-<<<<<<< HEAD
   User,
   LogOut
-=======
-  User
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -42,7 +31,6 @@ export const SettingsView: React.FC = () => {
 
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
-<<<<<<< HEAD
   const [confirmSignOutOpen, setConfirmSignOutOpen] = useState(false);
   const [userName, setUserName] = useState(settings.userName);
   const [clinicName, setClinicName] = useState(settings.clinicName);
@@ -75,11 +63,6 @@ export const SettingsView: React.FC = () => {
       });
     }
   };
-=======
-  const [userName, setUserName] = useState(settings.userName);
-  const [clinicName, setClinicName] = useState(settings.clinicName);
-  const [role, setRole] = useState(settings.role);
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,7 +190,6 @@ export const SettingsView: React.FC = () => {
         </form>
       </div>
 
-<<<<<<< HEAD
       {/* Account Card */}
       <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-6 border border-slate-100 dark:border-slate-700/60 shadow-xs space-y-4">
         <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-700/60">
@@ -235,186 +217,6 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-=======
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
-      {/* Appearance & Schedule Parameters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {/* Appearance Mode */}
-        <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-6 border border-slate-100 dark:border-slate-700/60 shadow-xs space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-700/60">
-            <Sun className="w-5 h-5 text-amber-500" />
-            <h3 className="font-bold text-base text-slate-800 dark:text-slate-100">
-              Appearance Theme
-            </h3>
-          </div>
-
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Select light or dark interface theme for clinic lighting conditions.
-          </p>
-
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'light', label: 'Light', icon: Sun },
-              { id: 'dark', label: 'Dark', icon: Moon },
-              { id: 'system', label: 'System', icon: Laptop },
-            ].map((theme) => {
-              const Icon = theme.icon;
-              const isSelected = settings.theme === theme.id;
-              return (
-                <button
-                  key={theme.id}
-                  onClick={() => updateSettings({ theme: theme.id as any })}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-500 text-teal-700 dark:text-teal-300 shadow-xs'
-                      : 'bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
-                  }`}
-                >
-                  <Icon className="w-5 h-5 mb-1.5" />
-                  <span>{theme.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Due Soon Threshold */}
-        <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-6 border border-slate-100 dark:border-slate-700/60 shadow-xs space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-700/60">
-            <Clock className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-            <h3 className="font-bold text-base text-slate-800 dark:text-slate-100">
-              Due Soon Alert Window
-            </h3>
-          </div>
-
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Vaccines scheduled within this number of days will be flagged as <strong>"Due Soon"</strong>.
-          </p>
-
-          <div className="flex items-center gap-3">
-            {[3, 7, 14, 30].map((days) => (
-              <button
-                key={days}
-                onClick={() => updateSettings({ dueSoonThresholdDays: days })}
-                className={`flex-1 py-2.5 rounded-xl border text-xs font-extrabold transition-all cursor-pointer ${
-                  settings.dueSoonThresholdDays === days
-                    ? 'bg-teal-600 border-teal-600 text-white shadow-xs'
-                    : 'bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
-                }`}
-              >
-                {days} Days
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Demo & Data Management Card */}
-      <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-6 border border-slate-100 dark:border-slate-700/60 shadow-xs space-y-5">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-700/60">
-          <Database className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-          <div>
-            <h3 className="font-bold text-base text-slate-800 dark:text-slate-100">
-              Demo Data & Local Storage
-            </h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              Easily populate, backup, or reset data during live presentations.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Reset to Demo Data */}
-          <button
-            onClick={() => setConfirmResetOpen(true)}
-            className="flex flex-col items-center justify-center p-4 rounded-xl bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 dark:hover:bg-teal-900/60 border border-teal-200 dark:border-teal-800/60 text-teal-800 dark:text-teal-300 text-center transition-colors cursor-pointer"
-          >
-            <RotateCcw className="w-6 h-6 mb-2 text-teal-600" />
-            <span className="text-xs font-extrabold">Reset Demo Data</span>
-            <span className="text-[10px] opacity-75 mt-0.5">Load sample patients</span>
-          </button>
-
-          {/* Export Backup JSON */}
-          <button
-            onClick={handleExportBackup}
-            className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-center transition-colors cursor-pointer"
-          >
-            <Download className="w-6 h-6 mb-2 text-slate-600 dark:text-slate-300" />
-            <span className="text-xs font-extrabold">Export Backup</span>
-            <span className="text-[10px] opacity-75 mt-0.5">Save as JSON file</span>
-          </button>
-
-          {/* Import Backup JSON */}
-          <label className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-center transition-colors cursor-pointer">
-            <Upload className="w-6 h-6 mb-2 text-slate-600 dark:text-slate-300" />
-            <span className="text-xs font-extrabold">Import Backup</span>
-            <span className="text-[10px] opacity-75 mt-0.5">Restore from JSON</span>
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportBackup}
-              className="hidden"
-            />
-          </label>
-
-          {/* Clear All Data */}
-          <button
-            onClick={() => setConfirmClearOpen(true)}
-            className="flex flex-col items-center justify-center p-4 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-300 text-center transition-colors cursor-pointer"
-          >
-            <Trash2 className="w-6 h-6 mb-2 text-rose-600" />
-            <span className="text-xs font-extrabold">Clear Database</span>
-            <span className="text-[10px] opacity-75 mt-0.5">Wipe all local data</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Student Project & System Architecture Details */}
-      <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-teal-50/30 dark:from-slate-800/60 dark:to-teal-950/20 border border-slate-200/80 dark:border-slate-700/60 space-y-3">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-teal-600" />
-          <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-            CareSchedule Architecture Notes
-          </h4>
-        </div>
-        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-          CareSchedule is designed with an <strong>Offline-First architecture</strong> using browser local storage and client-side reactive computation. All demographic data and immunization timestamps remain 100% private to the client device, requiring zero external server dependencies, cloud accounts, or internet bandwidth during emergency first aid lookups.
-        </p>
-      </div>
-
-      {/* Confirmation Dialogs */}
-      <ConfirmDialog
-        isOpen={confirmResetOpen}
-        onClose={() => setConfirmResetOpen(false)}
-        onConfirm={resetToDemo}
-        title="Reset to Sample Demo Data"
-        message="This will reload the initial demo patients (Rahim Ahmed, Ayesha Khan, etc.) with varied completed, due soon, and overdue vaccination statuses for presentation."
-        confirmText="Reset to Demo"
-        variant="primary"
-      />
-
-      <ConfirmDialog
-        isOpen={confirmClearOpen}
-        onClose={() => setConfirmClearOpen(false)}
-        onConfirm={clearAll}
-        title="Clear All Local Data"
-        message="Are you sure you want to completely erase all local patients and records? You will start with an empty database."
-        confirmText="Clear All Data"
-        variant="danger"
-      />
-<<<<<<< HEAD
-
-      <ConfirmDialog
-        isOpen={confirmSignOutOpen}
-        onClose={() => setConfirmSignOutOpen(false)}
-        onConfirm={handleSignOut}
-        title="Sign Out"
-        message="Are you sure you want to sign out of CareSchedule?"
-        confirmText="Sign Out"
-        variant="danger"
-      />
-=======
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
     </div>
   );
 };

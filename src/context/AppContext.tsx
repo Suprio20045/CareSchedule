@@ -1,35 +1,30 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import { supabase } from '../utils/supabaseClient';
-<<<<<<< HEAD
 import { auth } from '../utils/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-=======
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 import {
   saveVaccinations,
   updateVaccination,
   deleteVaccinationsForPatient
 } from '../utils/vaccinationApi';
-import { 
-  Patient, 
-  AppSettings, 
-  NavigationTab, 
-  ToastMessage, 
-  PatientVaccineRecord 
+import {
+  Patient,
+  AppSettings,
+  NavigationTab,
+  ToastMessage,
+  PatientVaccineRecord
 } from '../types';
 import { DEFAULT_SETTINGS } from '../data/demoData';
-import { 
-  savePatientsToStorage, 
-  loadSettingsFromStorage, 
-  saveSettingsToStorage, 
-  resetApplicationStorage, 
-  clearApplicationStorage 
+import {
+  loadSettingsFromStorage,
+  saveSettingsToStorage,
+  resetApplicationStorage,
+  clearApplicationStorage
 } from '../utils/storage';
-import { 
-  generateVaccineSchedule, 
-  calculateAggregatedStats, 
-  determineVaccineStatus, 
+import {
+  generateVaccineSchedule,
+  calculateAggregatedStats,
   refreshPatientVaccineStatuses,
   VaccinationSummaryStats,
   VaccineQueueItem
@@ -48,109 +43,78 @@ interface AppContextType {
   toasts: ToastMessage[];
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
   removeToast: (id: string) => void;
-  
-  // Actions
   addPatient: (patientData: Omit<Patient, 'id' | 'createdAt' | 'vaccines'>) => Promise<void>;
   updatePatient: (patient: Patient) => Promise<void>;
   deletePatient: (patientId: string) => Promise<void>;
   markVaccineCompleted: (
-    patientId: string, 
-    vaccineRecordId: string, 
-    administeredDate: string, 
-    notes?: string, 
-    batchNumber?: string, 
+    patientId: string,
+    vaccineRecordId: string,
+    administeredDate: string,
+    notes?: string,
+    batchNumber?: string,
     administeredBy?: string
   ) => Promise<void>;
   undoVaccineCompleted: (patientId: string, vaccineRecordId: string) => Promise<void>;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   resetToDemo: () => Promise<void>;
   clearAll: () => Promise<void>;
-  
-  // Computed stats
   aggregated: {
     stats: VaccinationSummaryStats;
     upcomingQueue: VaccineQueueItem[];
     dueSoonQueue: VaccineQueueItem[];
     overdueQueue: VaccineQueueItem[];
   };
-  
-  // Helpers
   selectedPatient: Patient | null;
   navigateToPatientSchedule: (patientId: string) => void;
   navigateToPatientReport: (patientId: string) => void;
 }
-// Convert a Supabase patient row into our React Patient format
-const mapPatientFromDb = (patient: any, vaccines: PatientVaccineRecord[]): Patient => {
-  return {
-    id: patient.id,
-    fullName: patient.full_name,
-    dateOfBirth: patient.date_of_birth,
-    gender: patient.gender,
-    bloodGroup: patient.blood_group,
-    guardianName: patient.guardian_name,
-    guardianPhone: patient.guardian_phone,
-    guardianRelation: patient.guardian_relation,
-    address: patient.address,
-    avatarSeed: patient.avatar_seed,
-    notes: patient.notes,
-    createdAt: patient.created_at,
-    vaccines,
-  };
-};
 
-// Convert a Supabase vaccination row into our React format
-const mapVaccinationFromDb = (vaccine: any): PatientVaccineRecord => {
-  return {
-    id: vaccine.id,
-    vaccineId: vaccine.vaccine_id,
-    vaccineName: vaccine.vaccine_name,
-    doseNumber: vaccine.dose_number,
-    dueDate: vaccine.due_date,
-    dateAdministered: vaccine.date_administered,
-    status: vaccine.status,
-    administeredBy: vaccine.administered_by,
-    notes: vaccine.notes,
-    batchNumber: vaccine.batch_number,
-    location: vaccine.location,
-  };
-};
+const mapPatientFromDb = (patient: any, vaccines: PatientVaccineRecord[]): Patient => ({
+  id: patient.id,
+  fullName: patient.full_name,
+  dateOfBirth: patient.date_of_birth,
+  gender: patient.gender,
+  bloodGroup: patient.blood_group,
+  guardianName: patient.guardian_name,
+  guardianPhone: patient.guardian_phone,
+  guardianRelation: patient.guardian_relation,
+  address: patient.address,
+  avatarSeed: patient.avatar_seed,
+  notes: patient.notes,
+  createdAt: patient.created_at,
+  vaccines,
+});
+
+const mapVaccinationFromDb = (vaccine: any): PatientVaccineRecord => ({
+  id: vaccine.id,
+  vaccineId: vaccine.vaccine_id,
+  vaccineName: vaccine.vaccine_name,
+  doseNumber: vaccine.dose_number,
+  dueDate: vaccine.due_date,
+  dateAdministered: vaccine.date_administered,
+  status: vaccine.status,
+  administeredBy: vaccine.administered_by,
+  notes: vaccine.notes,
+  batchNumber: vaccine.batch_number,
+  location: vaccine.location,
+});
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [patients, setPatients] = useState<Patient[]>([]);
-<<<<<<< HEAD
-=======
-  const [loading, setLoading] = useState(true);
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
   const [settings, setSettings] = useState<AppSettings>(() => loadSettingsFromStorage());
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   useEffect(() => {
-<<<<<<< HEAD
   const loadPatients = async (userId: string) => {
     // Load patients belonging to the logged-in Firebase user
     const { data: patientData, error: patientError } = await supabase
       .from('patients')
       .select('*')
       .eq('user_id', userId)
-=======
-  const loadPatients = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return;
-    }
-
-    // Load patients belonging to the logged-in user
-    const { data: patientData, error: patientError } = await supabase
-      .from('patients')
-      .select('*')
-      .eq('user_id', user.id)
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
       .order('created_at', { ascending: false });
 
     if (patientError) {
@@ -202,7 +166,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPatients(formattedPatients);
   };
 
-<<<<<<< HEAD
   // Firebase's auth state is resolved asynchronously, so `auth.currentUser`
   // can briefly be null on initial page load even for a signed-in user.
   // onAuthStateChanged fires once auth has actually settled, so we wait for
@@ -216,9 +179,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   return () => unsubscribe();
-=======
-  loadPatients();
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 }, []);
 
   // Apply dark mode class to html document element if theme is dark
@@ -273,15 +233,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addPatient = useCallback(
     async (patientData: Omit<Patient, 'id' | 'createdAt' | 'vaccines'>) => {
       try {
-<<<<<<< HEAD
         // Get currently logged-in Firebase user
         const user = auth.currentUser;
-=======
-        // Get currently logged-in user
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 
         if (!user) {
           addToast({
@@ -296,11 +249,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const { data, error } = await supabase
           .from('patients')
           .insert({
-<<<<<<< HEAD
             user_id: user.uid,
-=======
-            user_id: user.id,
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
             full_name: patientData.fullName,
             date_of_birth: patientData.dateOfBirth,
             gender: patientData.gender,
@@ -775,13 +724,7 @@ if (error) {
   // user from Supabase. Shared by resetToDemo and clearAll so that "clearing"
   // the app also clears the real backend, not just local/React state.
   const deleteAllPatientsForCurrentUser = useCallback(async (): Promise<{ error: string | null }> => {
-<<<<<<< HEAD
     const user = auth.currentUser;
-=======
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 
     if (!user) {
       // Nothing to delete server-side if there's no logged-in user.
@@ -791,11 +734,7 @@ if (error) {
     const { data: userPatients, error: fetchError } = await supabase
       .from('patients')
       .select('id')
-<<<<<<< HEAD
       .eq('user_id', user.uid);
-=======
-      .eq('user_id', user.id);
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 
     if (fetchError) {
       console.error('Error fetching patients before clearing:', fetchError);
@@ -821,11 +760,7 @@ if (error) {
     const { error: patientDeleteError } = await supabase
       .from('patients')
       .delete()
-<<<<<<< HEAD
       .eq('user_id', user.uid);
-=======
-      .eq('user_id', user.id);
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 
     if (patientDeleteError) {
       console.error('Error clearing patients:', patientDeleteError);
@@ -848,13 +783,7 @@ if (error) {
       return;
     }
 
-<<<<<<< HEAD
     const user = auth.currentUser;
-=======
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
 
     const demo = resetApplicationStorage();
 
@@ -880,11 +809,7 @@ if (error) {
       const { data: insertedPatient, error: insertError } = await supabase
         .from('patients')
         .insert({
-<<<<<<< HEAD
           user_id: user.uid,
-=======
-          user_id: user.id,
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
           full_name: demoPatient.fullName,
           date_of_birth: demoPatient.dateOfBirth,
           gender: demoPatient.gender,

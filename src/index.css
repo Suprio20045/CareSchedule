@@ -1,50 +1,77 @@
-@import "tailwindcss";
 
-<<<<<<< HEAD
 :root {
   color-scheme: light;
   --premium-shadow: 0 30px 80px -40px rgba(15, 23, 42, 0.42);
 }
 
-@layer base {
-  * {
-    box-sizing: border-box;
-  }
-
-  html,
-  body,
-  #root {
-    min-height: 100%;
-    height: 100%;
-  }
-
-  body {
-    @apply bg-slate-50 text-slate-800 antialiased;
-    font-family: Inter, "Segoe UI", sans-serif;
-    background-image: radial-gradient(circle at top left, rgba(168, 85, 247, 0.08), transparent 20%), radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.08), transparent 25%);
-  }
-
-  button,
-  input,
-  select,
-  textarea {
-    font: inherit;
-=======
-@layer base {
-  body {
-    @apply antialiased font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100;
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
-  }
+html,
+body,
+#root {
+  min-height: 100%;
+  height: 100%;
 }
 
-/* Print specific stylesheet for official report printouts */
+body {
+  margin: 0;
+  font-family: Inter, "Segoe UI", sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
+  background-image:
+    radial-gradient(circle at top left, rgba(168, 85, 247, 0.08), transparent 20%),
+    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.08), transparent 25%);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+}
+
 @media print {
   body {
     background-color: white !important;
     color: black !important;
   }
 
-  aside, header, nav, .print\:hidden {
+  aside,
+  header,
+  nav,
+  .print\:hidden {
     display: none !important;
   }
 
@@ -57,37 +84,3 @@
     width: 100% !important;
   }
 }
-
-<<<<<<< HEAD
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
-}
-
-=======
-/* Custom subtle scrollbar */
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
-}
-<<<<<<< HEAD
-
-.badge {
-  @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
-}
-=======
->>>>>>> d41ad45b5bbb319b58c52aadf5729ef5f013323f
